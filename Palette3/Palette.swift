@@ -104,7 +104,7 @@ public class Palette: Printable {
     public var description: String {
         return "Palette"
     }
-
+    
     private static let TargetDarkLuma: CGFloat = 0.26
     private static let MaxDarkLuma: CGFloat = 0.45
 
@@ -124,9 +124,10 @@ public class Palette: Printable {
     private static let WeightSaturation: CGFloat = 3
     private static let WeightLuma: CGFloat = 6
     private static let WeightPopulation: CGFloat = 1
-    private var swatches: [Swatch]
+    
+    public var swatches: [Swatch]
     private var highestPopulation: Int = 0
-
+    
     public var vibrantSwatch: Swatch?
     public var mutedSwatch: Swatch?
 

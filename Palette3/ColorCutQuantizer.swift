@@ -100,7 +100,7 @@ final class ColorCutQuantizer {
         // First, lets pack the populations into a SparseIntArray so that they can be easily
         // retrieved without knowing a color's index
         mColorPopulations = [Color:Int](minimumCapacity: rawColorCount)
-        for i in 0..<rawColorCount {
+        for i in 0 ..< rawColorCount {
             let color = rawColors[i]
             mColorPopulations[rawColors[i]] = rawColorCounts[i]
         }
@@ -108,7 +108,7 @@ final class ColorCutQuantizer {
         // Now go through all of the colors and keep those which we do not want to ignore
         mColors = [Color](count: rawColorCount, repeatedValue: 0)
         var validColorCount = 0
-        for i in 0..<rawColorCount {
+        for i in 0 ..< rawColorCount {
             let color = rawColors[i]
             if (!ColorCutQuantizer.shouldIgnoreColor(color)) {
                 mColors[validColorCount++] = color

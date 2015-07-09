@@ -85,6 +85,10 @@ public class Swatch: Equatable, Printable {
         return [(h * 60) % 360, s, l]
     }()
 
+    public func getRGB() -> UIColor {
+        return self.rgb
+    }
+    
     /**
     * Returns an appropriate color to use for any 'title' text which is displayed over this
     * {@link Swatch}'s color. This color is guaranteed to have sufficient contrast.
