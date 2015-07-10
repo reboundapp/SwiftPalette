@@ -87,12 +87,12 @@ final class ColorCutQuantizer {
     }
 
     /**
-    * Private constructor.
+    * constructor.
     *
     * @param colorHistogram histogram representing an image's pixel data
     * @param maxColors The maximum number of colors that should be in the result palette.
     */
-    private init(colorHistogram: ColorHistogram, maxColors: Int) {
+    init(colorHistogram: ColorHistogram, maxColors: Int) {
         let rawColorCount = colorHistogram.getNumberOfColors()
         let rawColors = colorHistogram.getColors()
         let rawColorCounts = colorHistogram.getColorCounts()
@@ -169,10 +169,10 @@ final class ColorCutQuantizer {
                 UIImagePNGRepresentation(img).writeToFile(pngPath, atomically: true)
             }
             */
-            for (index, colors) in enumerate(queue) {
-                var str = String(format: "Box \(pass) \(index): %#010x \(colors.getColorCount())", colors.getAverageColor().toInt())
+//            for (index, colors) in enumerate(queue) {
+//                var str = String(format: "Box \(pass) \(index): %#010x \(colors.getColorCount())", colors.getAverageColor().toInt())
                 // println(str)
-            }
+//            }
             pass++
 
             if let vbox = queue.pop() {

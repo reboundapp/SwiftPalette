@@ -9,7 +9,7 @@ private let MinContrastBodyText: CGFloat = 4.5
 * Represents a color swatch generated from an image's palette. The RGB color can be retrieved
 * by calling {@link #getRgb()}.
 */
-public class Swatch: Equatable, Printable {
+@objc public class Swatch: Equatable, Printable {
     let rgb: UIColor
     let population: Int
 

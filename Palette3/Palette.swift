@@ -3,8 +3,52 @@ import UIKit
 
 private let DefaultCalculateNumberColors = 16
 
-private let CalcualteBitmapMinDimension: CGFloat = 100
+private let CalculateBitmapMinDimension: CGFloat = 100
 extension UIImage {
+    func getPixelDataScaled(scale: CGFloat, pixelSkip:Int = 10) -> [Color] {
+        // convert the source to RGB8888 to ensure we can interpolate it
+        let source = self.CGImage
+        var imageWidth = CGImageGetWidth(source)
+        var imageHeight = CGImageGetHeight(source)
+        // scale the image size based on the quality
+        imageWidth = Int(CGFloat(imageWidth) * scale);
+        imageHeight = Int(CGFloat(imageHeight) * scale);
+        // create a colorspace in RGB
+        let colorSpace = CGColorSpaceCreateDeviceRGB();
+        // create a holder for the bitmap data
+        let dataLength = Int(imageWidth * imageHeight) * 4;
+        let bitmapData = UnsafeMutablePointer<UInt8>.alloc(1)
+        bitmapData[0] = 0
+        // base constants for the image data
+        let bytesPerPixel = 4;
+        let bytesPerRow = bytesPerPixel * Int(imageWidth);
+        let bitsPerComponent = 8;
+        // create the image context
+        let context = CGBitmapContextCreate(bitmapData, imageWidth, imageHeight, bitsPerComponent, bytesPerPixel, colorSpace, CGBitmapInfo.ByteOrder32Big)
+        // set the interpolation quality for reduction
+        CGContextSetInterpolationQuality(context, kCGInterpolationHigh);
+        // draw the image
+        CGContextDrawImage(context, CGRect(x: 0, y: 0, width: imageWidth, height: imageHeight), source);
+        
+        let pixelCount = dataLength / 4;
+        let pixelArrayTotal = Int(Double(pixelCount) * (1.0 / Double(pixelSkip)))
+        
+        var pixels = [Color]()
+        for var index = 0; index < pixelCount; index += pixelSkip {
+            let offset = index * 4
+            let red = bitmapData[offset + 0]
+            let green = bitmapData[offset + 1]
+            let blue = bitmapData[offset + 2]
+            let alpha = bitmapData[offset + 3]
+            if (alpha > 124) {
+                let color = Color.fromRGBA(red, green: green, blue: blue, alpha: alpha)
+                pixels.append(color)
+            }
+        }
+        
+        return pixels
+    }
+    
     func getPixelData(atX x: Int, andY y: Int, count: Int) -> [Color] {
         var result = [Color]()
 
@@ -27,10 +71,10 @@ extension UIImage {
             byteIndex += bytesPerPixel
 
             var c = Color.fromRGBA(red, green: green, blue: blue, alpha: alpha)
-            if i < 10 {
-                var s = String(format: "%#08x: %#02x, %#02x, %#02x, %#02x", c, red, green, blue, alpha)
-                // println(s)
-            }
+//            if i < 10 {
+//                var s = String(format: "%#08x: %#02x, %#02x, %#02x, %#02x", c, red, green, blue, alpha)
+//                 println(s)
+//            }
             result.append(c)
         }
 
@@ -42,7 +86,7 @@ extension UIImage {
      * {@value #CALCULATE_BITMAP_MIN_DIMENSION}px. If {@code bitmap} is smaller than this, than it
      * is returned.
      */
-    func scaleToMaxSize(maxSize: CGFloat = CalcualteBitmapMinDimension) -> UIImage {
+    func scaleToMaxSize(maxSize: CGFloat = CalculateBitmapMinDimension) -> UIImage {
         let minDimension = min(size.width, size.height)
 
         if (minDimension <= maxSize) {
@@ -100,7 +144,21 @@ extension UIImage {
     }
 }
 
-public class Palette: Printable {
+@objc public class PaletteObjc: NSObject {
+    public let palette: Palette
+    
+    public convenience init(fromByteArray byteArray: UnsafePointer<UInt8>, byteArrayLen: Int, numColors: Int = DefaultCalculateNumberColors) {
+        let palette = Palette(fromByteArray: byteArray, byteArrayLen: byteArrayLen, numColors: numColors)
+        self.init(palette: palette)
+    }
+    
+    init(palette: Palette) {
+        self.palette = palette
+        super.init()
+    }
+}
+
+@objc public class Palette: Printable {
     public var description: String {
         return "Palette"
     }
@@ -164,14 +222,37 @@ public class Palette: Printable {
         let quantizer = ColorCutQuantizer(fromImage: scaledImage, maxColors: numColors)
         self.init(swatches: quantizer.getQuantizedColors())
     }
+    
+    public convenience init(fromImage image: UIImage, scale: CGFloat, pixelSkip: Int = 10, numColors: Int = DefaultCalculateNumberColors) {
+        let pixels = image.getPixelDataScaled(scale, pixelSkip: pixelSkip)
+        println("\nAnalyzing \(pixels.count) pixels")
+        var time = CACurrentMediaTime()
+        let histogram = ColorHistogram(pixels: pixels)
+        println("histogram: \(CACurrentMediaTime() - time)")
+        time = CACurrentMediaTime()
+        let quantizer = ColorCutQuantizer(colorHistogram: histogram, maxColors: numColors)
+        println("quantizer: \(CACurrentMediaTime() - time)")
+        self.init(swatches: quantizer.getQuantizedColors())
+    }
+    
+    public convenience init(fromByteArray byteArray: UnsafePointer<UInt8>, byteArrayLen: Int, numColors: Int = DefaultCalculateNumberColors) {
+        var pixels = [Color]()
+        for var index = 0; index < byteArrayLen; ++index {
+            let red = byteArray[index++]
+            let green = byteArray[index++]
+            let blue = byteArray[index++]
+            let alpha = byteArray[index++]
+            let c = Color.fromRGBA(red, green: green, blue: blue, alpha: alpha)
+            pixels.append(c)
+        }
+        let histogram = ColorHistogram(pixels: pixels)
+        let quantizer = ColorCutQuantizer(colorHistogram: histogram, maxColors: numColors)
+        self.init(swatches: quantizer.getQuantizedColors())
+    }
 
     private init(swatches: [Swatch]) {
         self.swatches = swatches
         highestPopulation = findMaxPopulation()
-
-        for swatch in swatches {
-            println(swatch)
-        }
 
         vibrantSwatch = findColor(Palette.TargetNormalLuma,
             minLuma: Palette.MinNormalLuma,
@@ -190,15 +271,6 @@ public class Palette: Printable {
         mutedSwatch = findColor(Palette.TargetNormalLuma, minLuma: Palette.MinNormalLuma, maxLuma: Palette.MaxNormalLuma, targetSaturation: Palette.TargetMutedSaturation, minSaturation: 0.0, maxSaturation: Palette.MaxMutedSaturation)
         lightMutedColor = findColor(Palette.TargetLightLuma, minLuma: Palette.MinLightLuma, maxLuma: 1.0, targetSaturation: Palette.TargetMutedSaturation, minSaturation: 0.0, maxSaturation: Palette.MaxMutedSaturation)
         darkMutedSwatch = findColor(Palette.TargetDarkLuma, minLuma: 0.0, maxLuma: Palette.MaxDarkLuma, targetSaturation: Palette.TargetMutedSaturation, minSaturation: 0.0, maxSaturation: Palette.MaxMutedSaturation)
-
-
-        println("=========================================")
-        println(vibrantSwatch)
-        println(darkVibrantSwatch)
-        println(lightVibrantSwatch)
-        println(mutedSwatch)
-        println(darkMutedSwatch)
-        println(lightMutedColor)
 
         // Now try and generate any missing colors
         generateEmptySwatches()

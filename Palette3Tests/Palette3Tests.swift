@@ -52,7 +52,6 @@ class Palette3Tests: XCTestCase {
         mut: Swatch?, mutDark: Swatch?, mutLight: Swatch?) {
             let bundle = NSBundle(forClass: Palette3Tests.self)
             let path = bundle.resourcePath?.stringByAppendingPathComponent(img)
-            println(path)
             let img = UIImage(contentsOfFile: path!)
             XCTAssertNotNil(img)
 
